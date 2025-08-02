@@ -79,7 +79,7 @@ export const MyHoldings = ({
       setAllCollectiblesLoading(false);
     };
 
-    updateMyCollectibles().finally(() => setStatus("Mint NFT"));
+    updateMyCollectibles().finally(() => setStatus("Deploy NFT Contract"));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connectedAddress, myTotalBalance]);
 

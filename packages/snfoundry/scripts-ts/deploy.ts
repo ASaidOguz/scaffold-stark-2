@@ -42,10 +42,12 @@ import { green } from "./helpers/colorize-log";
  * @returns {Promise<void>}
  */
 const deployScript = async (): Promise<void> => {
+  const nftClassHash = "0x0401994291609cb7d367deb7da2eb96801c6e0a178e79e32cbf3341c36258ecf"; // Replace with actual class hash
   await deployContract({
-    contract: "YourCollectible",
+    contract: "NftFactory",
     constructorArgs: {
       owner: deployer.address,
+      nft_class_hash:nftClassHash
     },
   });
 };

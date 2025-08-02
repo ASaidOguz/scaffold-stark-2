@@ -13,25 +13,31 @@ import { useState } from "react";
 
 const MyNFTs: NextPage = () => {
   const { address: connectedAddress, isConnected, isConnecting } = useAccount();
-  const [status, setStatus] = useState("Mint NFT");
-  const [isMinting, setIsMinting] = useState(false);
+  const [status, setStatus] = useState("Deploy NFT Contract");
+  const [isDeploying, setIsDeploying] = useState(false);
   const [lastMintedTokenId, setLastMintedTokenId] = useState<number>();
-
+  // Need to set the arguments of deploy nft contract function
+  // This elements will be accepted from pagetsx form element 
+  // and passed to the deploy_nft_contract function
+  // This way we will deploy new NFT contract via NFT Factory contract
   const { sendAsync: mintItem } = useScaffoldWriteContract({
-    contractName: "YourCollectible",
-    functionName: "mint_item",
+    contractName: "NftFactory",
+    functionName: "deploy_nft_contract",
     args: [connectedAddress, ""],
   });
-
+  // This will read the number of deployed NFT contracts by the connected address
+  // So we can map these addresses as individual deployed nft contracts
+  // Users will be able to choose which NFT contract to mint from
   const { data: tokenIdCounter, refetch } = useScaffoldReadContract({
-    contractName: "YourCollectible",
-    functionName: "current",
+    contractName: "NftFactory",
+    functionName: "get_deployed_nfts_by_deployer",
+    args: [connectedAddress],
     watch: true,
   });
 
-  const handleMintItem = async () => {
-    setStatus("Minting NFT");
-    setIsMinting(true);
+  const handleDeployContract = async () => {
+    setStatus("Deploying NFT Contract");
+    setIsDeploying(true);
     const tokenIdCounterNumber = Number(tokenIdCounter);
 
     // circle back to the zero item if we've reached the end of the array
@@ -39,8 +45,8 @@ const MyNFTs: NextPage = () => {
       tokenIdCounter === undefined ||
       tokenIdCounterNumber === lastMintedTokenId
     ) {
-      setStatus("Mint NFT");
-      setIsMinting(false);
+      setStatus("Deploy NFT Contract");
+      setIsDeploying(false);
       notification.warning(
         "Cannot mint the same token again, please wait for the new token ID",
       );
@@ -60,15 +66,16 @@ const MyNFTs: NextPage = () => {
       await mintItem({
         args: [connectedAddress, uploadedItem.path],
       });
-      setStatus("Updating NFT List");
+      setStatus("Updating NFT Contract List");
       refetch();
+      console.log("Nft Contract Array:",tokenIdCounter)
       setLastMintedTokenId(tokenIdCounterNumber);
-      setIsMinting(false);
+      setIsDeploying(false);
     } catch (error) {
       notification.remove(notificationId);
       console.error(error);
-      setStatus("Mint NFT");
-      setIsMinting(false);
+      setStatus("Deploy NFT Contract");
+      setIsDeploying(false);
     }
   };
 
@@ -77,7 +84,7 @@ const MyNFTs: NextPage = () => {
       <div className="flex items-center flex-col pt-10">
         <div className="px-5">
           <h1 className="text-center mb-8">
-            <span className="block text-4xl font-bold">My NFTs</span>
+            <span className="block text-4xl font-bold">Nft Factory</span>
           </h1>
         </div>
       </div>
@@ -87,10 +94,10 @@ const MyNFTs: NextPage = () => {
         ) : (
           <button
             className="btn btn-secondary text-white"
-            disabled={status !== "Mint NFT" || isMinting}
-            onClick={handleMintItem}
+            disabled={status !== "Deploy NFT Contract" || isDeploying}
+            onClick={handleDeployContract}
           >
-            {status !== "Mint NFT" && (
+            {status !== "Deploy NFT Contract" && (
               <span className="loading loading-spinner loading-xs"></span>
             )}
             {status}
