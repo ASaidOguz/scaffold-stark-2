@@ -1,17 +1,28 @@
 import { useState } from "react";
-import { Collectible } from "./MyHoldings";
+import { Collectible, ContractData } from "./MyHoldings";
 import { AddressInput } from "../scaffold-stark";
 import { Address } from "../scaffold-stark";
 import { Address as AddressType } from "@starknet-react/chains";
-import { useScaffoldWriteContract } from "~~/hooks/scaffold-stark/useScaffoldWriteContract";
-export const NFTCard = ({ nft }: { nft: Collectible }) => {
+import { useDynamicScaffoldWriteContract } from "~~/hooks/scaffold-stark/useScaffoldWriteContract";
+export const NFTCard = ({ nft,contract,abi }: { nft: Collectible,contract:ContractData,abi:any[]}) => {
   const [transferToAddress, setTransferToAddress] = useState("");
 
-  const { sendAsync: transferNFT } = useScaffoldWriteContract({
+/*   const { sendAsync: transferNFT } = useScaffoldWriteContract({
     contractName: "YourCollectible",
     functionName: "transfer_from",
     args: [nft.owner, transferToAddress, BigInt(nft.id.toString())],
-  });
+  }); */
+
+   // Setup scaffold write hooks for minting
+    const {
+      sendAsync: transferNFT,
+      isPending: isTransferPending,
+    } = useDynamicScaffoldWriteContract({
+      contractAddress: contract.address,
+      contractAbi: abi,
+      functionName: "transfer_from",
+      args: [nft.owner, transferToAddress, BigInt(nft.id.toString())],
+    });
 
   const wrapInTryCatch =
     (fn: () => Promise<any>, errorMessageFnDescription: string) => async () => {

@@ -4,8 +4,8 @@ import "~~/styles/globals.css";
 import { ThemeProvider } from "~~/components/ThemeProvider";
 
 export const metadata: Metadata = {
-  title: "Scaffold-Stark",
-  description: "Fast track your starknet journey",
+  title: "NFT Factory",
+  description: "Deploy-Transfer-NFTs on Starknet Sepolia Testnet",
   icons: "/logo.ico",
 };
 

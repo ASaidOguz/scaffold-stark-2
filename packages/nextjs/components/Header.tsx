@@ -29,8 +29,8 @@ type HeaderMenuLink = {
 
 export const menuLinks: HeaderMenuLink[] = [
   {
-    label: "My NFTs",
-    href: "/myNFTs",
+    label: "Nft Factory",
+    href: "/nft-factory",
     icon: <PhotoIcon className="h-4 w-4" />,
   },
   {

@@ -131,12 +131,10 @@ export const useScaffoldWriteContract = <
 };
 
 // Alternative: Separate hook specifically for dynamic contracts
-export const useDynamicScaffoldWriteContract = <
-  TFunctionName extends string,
->(config: {
+export const useDynamicScaffoldWriteContract = (config: {
   contractAddress: string;
   contractAbi: Abi;
-  functionName: TFunctionName;
+  functionName: string;
   args?: any[];
 }) => {
   const { chain } = useNetwork();
