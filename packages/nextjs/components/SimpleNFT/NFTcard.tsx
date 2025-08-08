@@ -1,12 +1,20 @@
-import { useState } from "react";
+import { Dispatch, SetStateAction, useState } from "react";
 import { Collectible, ContractData } from "./MyHoldings";
 import { AddressInput } from "../scaffold-stark";
 import { Address } from "../scaffold-stark";
 import { Address as AddressType } from "@starknet-react/chains";
 import { useDynamicScaffoldWriteContract } from "~~/hooks/scaffold-stark/useScaffoldWriteContract";
-export const NFTCard = ({ nft,contract,abi }: { nft: Collectible,contract:ContractData,abi:any[]}) => {
-  const [transferToAddress, setTransferToAddress] = useState("");
+import { useProvider } from "@starknet-react/core";
+import { notification } from "~~/utils/scaffold-stark";
 
+export const NFTCard = ({ nft,contract,abi,setTransferTx }: { 
+                         nft: Collectible,
+                         contract:ContractData,
+                         abi:any[],
+                         setTransferTx:Dispatch<SetStateAction<string | undefined>>
+                         }) => {
+  const [transferToAddress, setTransferToAddress] = useState("");
+  const{provider}=useProvider();
 /*   const { sendAsync: transferNFT } = useScaffoldWriteContract({
     contractName: "YourCollectible",
     functionName: "transfer_from",
@@ -27,7 +35,18 @@ export const NFTCard = ({ nft,contract,abi }: { nft: Collectible,contract:Contra
   const wrapInTryCatch =
     (fn: () => Promise<any>, errorMessageFnDescription: string) => async () => {
       try {
-        await fn();
+        const response = await fn();
+          if (response) {
+                const txRecipt=await provider.waitForTransaction(response);
+                console.log("Transaction receipt:", txRecipt);
+                const result=txRecipt.isSuccess();
+                if (result){
+                setTransferTx(response);
+                notification.success(`NFT transfer successfully! Tx Hash: ${response}`, { duration: 4000 });
+              }else{
+                  notification.error("NFT transfer failed", { duration: 4000 });
+                }
+              }
       } catch (error) {
         console.error(
           `Error calling ${errorMessageFnDescription} function`,

@@ -8,9 +8,8 @@ import { useScaffoldReadContract } from "~~/hooks/scaffold-stark/useScaffoldRead
 import { useScaffoldWriteContract } from "~~/hooks/scaffold-stark/useScaffoldWriteContract";
 import { notification } from "~~/utils/scaffold-stark";
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { Contract,waitForTransactionOptions } from "starknet";
-import{Abi as SIMPLE_NFT_ABI} from "./abi"; // Import the ABI from the abi.ts file
-
+import { Contract } from "starknet";
+import { Abi as SIMPLE_NFT_ABI } from "./abi"; // Import the ABI from the abi.ts file
 
 export interface ContractData {
   address: string;
@@ -18,6 +17,9 @@ export interface ContractData {
   symbol: string;
   totalSupply: number;
 }
+
+// Rate limiting utility
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 const NftFactory: NextPage = () => {
   const { address: connectedAddress, isConnected, isConnecting, account } = useAccount();
@@ -27,11 +29,14 @@ const NftFactory: NextPage = () => {
   const [contractArray, setContractArray] = useState<ContractData[]>([]);
   const [isLoadingContracts, setIsLoadingContracts] = useState(false);
   const [txHash, settxHash] = useState<string | undefined>(undefined);
+  const [loadingProgress, setLoadingProgress] = useState({ current: 0, total: 0 });
+  
   // Form state for contract deployment parameters
   const [contractName, setContractName] = useState("");
   const [contractSymbol, setContractSymbol] = useState("");
    
   const memoizedAbi = useMemo(() => SIMPLE_NFT_ABI, []);
+  
   // Deploy contract function
   const { sendAsync: deployContract } = useScaffoldWriteContract({
     contractName: "NftFactory",
@@ -47,79 +52,108 @@ const NftFactory: NextPage = () => {
     watch: false,
   });
 
-  // Fetch contract details and build contract array
-useEffect(() => {
-  const fetchContractArray = async () => {
-    if (!connectedAddress || !provider) {
-      setContractArray([]);
-      return;
+  // Sequential contract processing with rate limiting
+  const processContractsSequentially = useCallback(async (addresses: any[]) => {
+    const contracts: ContractData[] = [];
+    setLoadingProgress({ current: 0, total: addresses.length });
+
+    for (let i = 0; i < addresses.length; i++) {
+      const address = addresses[i];
+      setLoadingProgress({ current: i + 1, total: addresses.length });
+
+      try {
+        const addressString =
+          typeof address === "bigint" || typeof address === "number"
+            ? `0x${address.toString(16)}`
+            : address;
+
+        const nftContract = new Contract(SIMPLE_NFT_ABI, addressString, provider);
+        
+        // Sequential calls with delays to respect rate limits
+        const nameResult = await nftContract.call("name");
+        await delay(200); // 200ms delay between calls
+        
+        const symbolResult = await nftContract.call("symbol");
+        await delay(200);
+        
+        const totalSupplyResult = await nftContract.call("total_supply");
+        await delay(200);
+
+        contracts.push({
+          address: addressString,
+          name: nameResult.toString(),
+          symbol: symbolResult.toString(),
+          totalSupply: Number(totalSupplyResult),
+        });
+
+        console.log(`✅ Processed contract ${i + 1}/${addresses.length}: ${nameResult}`);
+        
+      } catch (error) {
+        console.error(`Error reading contract at ${address}:`, error);
+        const addressString =
+          typeof address === "bigint" || typeof address === "number"
+            ? `0x${address.toString(16)}`
+            : address;
+
+        contracts.push({
+          address: addressString,
+          name: "Unknown Contract",
+          symbol: "UNK",
+          totalSupply: 0,
+        });
+      }
+
+      // Add delay between contracts to prevent rate limiting
+      if (i < addresses.length - 1) {
+        await delay(500); // 500ms between contracts
+      }
     }
 
-    setIsLoadingContracts(true);
-    setContractArray([]); // Clear previous data early
+    return contracts;
+  }, [provider]);
 
-    try {
-      const freshAddresses = await refetchAddresses(); // manually fetch fresh data
-
-      const rawAddresses = freshAddresses?.data;
-
-      if (!rawAddresses || !Array.isArray(rawAddresses)) {
+  // Fetch contract details and build contract array
+  useEffect(() => {
+    const fetchContractArray = async () => {
+      if (!connectedAddress || !provider) {
         setContractArray([]);
-        setIsLoadingContracts(false);
         return;
       }
 
-      const contracts: ContractData[] = [];
+      setIsLoadingContracts(true);
+      setContractArray([]); // Clear previous data early
 
-      for (const address of rawAddresses) {
-        try {
-          const addressString =
-            typeof address === "bigint" || typeof address === "number"
-              ? `0x${address.toString(16)}`
-              : address;
+      try {
+        console.log("🔄 Fetching contract addresses...");
+        const freshAddresses = await refetchAddresses(); // manually fetch fresh data
+        const rawAddresses = freshAddresses?.data;
 
-          const nftContract = new Contract(SIMPLE_NFT_ABI, addressString, provider);
-          const [nameResult, symbolResult, totalSupplyResult] = await Promise.all([
-            nftContract.call("name"),
-            nftContract.call("symbol"),
-            nftContract.call("total_supply"),
-          ]);
-
-          contracts.push({
-            address: addressString,
-            name: nameResult.toString(),
-            symbol: symbolResult.toString(),
-            totalSupply: Number(totalSupplyResult),
-          });
-        } catch (error) {
-          console.error(`Error reading contract at ${address}:`, error);
-          const addressString =
-            typeof address === "bigint" || typeof address === "number"
-              ? `0x${address.toString(16)}`
-              : address;
-
-          contracts.push({
-            address: addressString,
-            name: "Unknown Contract",
-            symbol: "UNK",
-            totalSupply: 0,
-          });
+        if (!rawAddresses || !Array.isArray(rawAddresses)) {
+          setContractArray([]);
+          setIsLoadingContracts(false);
+          return;
         }
+
+        console.log(`📋 Found ${rawAddresses.length} contracts, processing sequentially...`);
+        
+        // Process contracts one by one with rate limiting
+        const contracts = await processContractsSequentially(rawAddresses);
+        
+        console.log("🎉 All contracts processed successfully");
+        setContractArray(contracts);
+        
+      } catch (err) {
+        console.error("Error fetching contract addresses:", err);
+        setContractArray([]);
+        notification.error("Failed to load contracts. Please try again.");
+      } finally {
+        setIsLoadingContracts(false);
+        setLoadingProgress({ current: 0, total: 0 });
       }
+    };
 
-      setContractArray(contracts);
-    } catch (err) {
-      console.error("Error fetching contract addresses:", err);
-      setContractArray([]);
-    } finally {
-      setIsLoadingContracts(false);
-    }
-  };
-
-  fetchContractArray();
-}, [connectedAddress, isConnected, provider,txHash]);
-
-
+    fetchContractArray();
+  }, [connectedAddress, isConnected, provider, txHash, processContractsSequentially]);
 
   const handleDeployContract = async () => {
     if (!contractName.trim()) {
@@ -140,20 +174,23 @@ useEffect(() => {
       });
       console.log("Deploy response:", response);
       setStatus("Updating NFT Contract List");
-      await refetchAddresses();
+      
       setIsDeploying(false);
       
       // Reset form after successful deployment
       setContractName("");
       setContractSymbol("");
+      
       if (response) {
-        const txRecipt=await provider.waitForTransaction(response);
-        console.log("Transaction receipt:", txRecipt);
-        const result=txRecipt.isSuccess();
-        if (result){
+        const txReceipt = await provider.waitForTransaction(response);
+        console.log("Transaction receipt:", txReceipt);
+        const result = txReceipt.isSuccess();
+        
+        if (result) {
           setStatus("Deploy NFT Contract");
-        notification.success("NFT Contract deployed successfully!");
-        settxHash(response);}else{
+          notification.success("NFT Contract deployed successfully!");
+          settxHash(response);
+        } else {
           notification.error("NFT Contract deployment failed");
         }
       }
@@ -164,11 +201,6 @@ useEffect(() => {
       notification.error("Failed to deploy contract");
     }
   };
-
-  // Memoize the refresh function to prevent recreating on every render
-const refreshContractArray = useCallback(() => {
-  refetchAddresses();
-}, [refetchAddresses,connectedAddress]);
 
   return (
     <>
@@ -230,11 +262,28 @@ const refreshContractArray = useCallback(() => {
             </div>
           </div>
 
-          {/* Loading State */}
+          {/* Loading State with Progress */}
           {isLoadingContracts && (
-            <div className="flex justify-center items-center">
-              <span className="loading loading-spinner loading-lg"></span>
-              <span className="ml-3">Loading your contracts...</span>
+            <div className="flex flex-col items-center justify-center mb-8">
+              <span className="loading loading-spinner loading-lg mb-4"></span>
+              <div className="text-center">
+                <div className="text-lg font-semibold mb-2">Loading your contracts...</div>
+                {loadingProgress.total > 0 && (
+                  <>
+                    <div className="text-sm text-gray-600 mb-2">
+                      Processing {loadingProgress.current} of {loadingProgress.total} contracts
+                    </div>
+                    <progress 
+                      className="progress progress-primary w-64" 
+                      value={loadingProgress.current} 
+                      max={loadingProgress.total}
+                    ></progress>
+                  </>
+                )}
+                <div className="text-xs text-gray-500 mt-2">
+                  Taking it slow to avoid rate limits...
+                </div>
+              </div>
             </div>
           )}
 
@@ -251,22 +300,18 @@ const refreshContractArray = useCallback(() => {
             <div className="w-full max-w-7xl">
               <div className="flex justify-between items-center mb-6 px-4">
                 <h2 className="text-2xl font-bold">Your NFT Contracts ({contractArray.length})</h2>
-                <button 
-                  className="btn btn-outline btn-sm"
-                  onClick={refreshContractArray}
-                >
-                  Refresh All
-                </button>
+                <div className="text-sm text-gray-500">
+                  Loaded with rate limiting to prevent API issues
+                </div>
               </div>
               
               <div className="space-y-8">
                 {contractArray.map((contract) => (
                   <div key={contract.address} className="border-2 border-base-300 rounded-lg p-6 bg-base-50">
-                     { <MyHoldings 
+                    <MyHoldings 
                       contract={contract}
                       abi={memoizedAbi}
-                      onRefresh={refreshContractArray}
-                    />}
+                    />
                   </div>
                 ))}
               </div>
@@ -279,4 +324,3 @@ const refreshContractArray = useCallback(() => {
 };
 
 export default NftFactory;
-

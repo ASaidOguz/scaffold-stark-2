@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { NextPage } from "next";
 import { notification } from "~~/utils/scaffold-stark/notification";
-import { addToIPFS } from "~~/utils/simpleNFT/ipfs-fetch";
+import { addToIPFS } from "~~/utils/simpleNFT/ipfs";
 import nftsMetadata from "~~/utils/simpleNFT/nftsMetadata";
 import { INITIAL_ATTEMPT, MAX_ATTEMPTS } from "~~/utils/simpleNFT/constants";
 

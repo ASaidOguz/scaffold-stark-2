@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { NextPage } from "next";
 import { notification } from "~~/utils/scaffold-stark/notification";
-import { getMetadataFromIPFS } from "~~/utils/simpleNFT/ipfs-fetch";
+import { getNFTMetadataFromIPFS } from "~~/utils/simpleNFT/ipfs";
 import { INITIAL_ATTEMPT, MAX_ATTEMPTS } from "~~/utils/simpleNFT/constants";
 
 // Import the JSON editor component and its core CSS
@@ -31,7 +31,7 @@ const IpfsDownload: NextPage = () => {
 
     while (attempt < maxAttempts) {
       try {
-        const metaData = await getMetadataFromIPFS(ipfsPath);
+        const metaData = await getNFTMetadataFromIPFS(ipfsPath);
 
         notification.remove(loadingNotificationId);
         if (retryNotificationId) notification.remove(retryNotificationId);
