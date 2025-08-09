@@ -33,9 +33,10 @@ const IpfsUpload: NextPage = () => {
     while (attempt < maxAttempts) {
       try {
         const uploadedItem = await addToIPFS(yourJSON);
+        console.log("Uploaded to IPFS:", uploadedItem);
         notification.remove(notificationId);
         notification.success("Uploaded to IPFS");
-        setUploadedIpfsPath(uploadedItem.path);
+        setUploadedIpfsPath(uploadedItem.cid);
         break;
       } catch (error) {
         attempt++;
