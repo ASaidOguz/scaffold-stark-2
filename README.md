@@ -1,6 +1,6 @@
-# 🚩 Challenge #0: 🎟 Simple NFT Example
+# NFT-Factory 
 
-![readme-0](./packages/nextjs/public/hero.png)
+![image](/packages/nextjs/public/Ekran%20Alıntısı.PNG)
 
 📚 This tutorial is meant for developers that already understand the 🖍️ basics: [Starklings](https://starklings.app/) or [Node Guardians](https://nodeguardians.io/campaigns?f=3%3D2)
 
