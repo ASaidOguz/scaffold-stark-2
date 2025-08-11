@@ -21,7 +21,11 @@ const Home: NextPage = () => {
               <p className="text-center text-lg">
                 🌟 In Nft factory website where you can easily create your nft contract and 
                 deploy on starknet sepolia testnet.And then enjoy minting your nfts to friends and family.
+              </p>
+               <p className="text-center text-lg">
                 🌟 IPFS Upload : This section where you can create and upload your nft metadata.
+              </p>
+               <p className="text-center text-lg">
                 🌟 IPFS Download : This section where you can check your nft metada via ipfs hash by downloading it.
               </p>
                   <Image
